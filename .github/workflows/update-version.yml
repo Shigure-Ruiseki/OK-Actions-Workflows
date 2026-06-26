@@ -1,4 +1,4 @@
-name: Update version JSON
+name: Reusable Update Version JSON
 
 on:
   workflow_call:
@@ -7,6 +7,11 @@ on:
         description: 'The branch or tag name passed from the caller workflow'
         required: true
         type: string
+      target_folder:
+        description: 'The specific folder to save version.json (e.g., config, assets/info)'
+        required: false
+        type: string
+        default: 'version'
       extra_downloads:
         description: 'JSON string of additional download links (e.g., {"curseforge": "url"})'
         required: false
@@ -15,6 +20,7 @@ on:
 
 permissions:
   contents: write
+
 jobs:
   update-version:
     runs-on: ubuntu-latest
@@ -28,7 +34,7 @@ jobs:
       - name: Extract version from Tag
         id: get_version
         run: |
-          RAW_TAG="${{ inputs.head_branch }}"
+          RAW_TAG="${{ inputs.inputs.head_branch || inputs.head_branch }}"
           CLEAN_VERSION=$(echo "$RAW_TAG" | sed 's/^[^0-9]*//')
           echo "VERSION=$CLEAN_VERSION" >> $GITHUB_OUTPUT
           echo "TAG_NAME=$RAW_TAG" >> $GITHUB_OUTPUT
@@ -42,7 +48,7 @@ jobs:
           TAG_NAME="${{ steps.get_version.outputs.TAG_NAME }}"
           REPO_URL="${{ github.server_url }}/${{ github.repository }}"
           RELEASE_URL="$REPO_URL/releases/tag/$TAG_NAME"
-
+          
           cat <<EOF > base_version.json
           {
             "minecraft": "1.7.10",
@@ -53,23 +59,26 @@ jobs:
           }
           EOF
 
+          TARGET_DIR="${{ inputs.target_folder }}"
+          mkdir -p "$TARGET_DIR"
+
           EXTRA_INPUTS='${{ inputs.extra_downloads }}'
-
-          jq --argjson extra "$EXTRA_INPUTS" '.download += $extra' base_version.json > version.json
-
-          echo "=== Final version.json ==="
-          cat version.json
+          jq --argjson extra "$EXTRA_INPUTS" '.download += $extra' base_version.json > "$TARGET_DIR/version.json"
+          
+          echo "=== Final $TARGET_DIR/version.json ==="
+          cat "$TARGET_DIR/version.json"
 
       - name: Commit and Push changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
 
-          git add version.json
+          TARGET_DIR="${{ inputs.target_folder }}"
+          git add "$TARGET_DIR/version.json"
 
           if git diff --staged --quiet; then
             echo "No changes detected in version.json. Skipping commit."
           else
-            git commit -m "chore: update version.json to v${{ steps.get_version.outputs.VERSION }} [skip ci]"
+            git commit -m "chore: update $TARGET_DIR/version.json to v${{ steps.get_version.outputs.VERSION }} [skip ci]"
             git push origin HEAD:${{ inputs.head_branch }}
           fi
