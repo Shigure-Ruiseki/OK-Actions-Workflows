@@ -4,9 +4,14 @@ on:
   workflow_call:
     inputs:
       head_branch:
-        description: 'The branch or tag name passed from the caller workflow'
+        description: 'The branch or tag name to extract version from'
         required: true
         type: string
+      target_branch:
+        description: 'The destination branch to push version.json to (defaults to master)'
+        required: false
+        type: string
+        default: 'master'
       target_folder:
         description: 'The specific folder to save version.json (e.g., config, assets/info)'
         required: false
@@ -25,9 +30,14 @@ on:
   workflow_dispatch:
     inputs:
       head_branch:
-        description: 'Branch or Tag name to extract version and push to (e.g., v1.0.0, master)'
+        description: 'Branch or Tag name to extract version from (e.g., v1.0.0, master)'
         required: true
         type: string
+      target_branch:
+        description: 'The destination branch to push version.json to'
+        required: false
+        type: string
+        default: 'master'
       target_folder:
         description: 'The specific folder to save version.json'
         required: false
@@ -105,5 +115,13 @@ jobs:
             echo "No changes detected in version.json. Skipping commit."
           else
             git commit -m "chore: update $TARGET_DIR/version.json to v${{ steps.get_version.outputs.VERSION }} [skip ci]"
-            git push origin HEAD:${{ inputs.head_branch }}
+          
+            DEST_BRANCH="${{ inputs.target_branch }}"
+          
+            if [ -z "$DEST_BRANCH" ]; then
+              DEST_BRANCH="master"
+            fi
+          
+            echo "Pushing changes straight to branch: $DEST_BRANCH"
+            git push origin HEAD:$DEST_BRANCH
           fi
