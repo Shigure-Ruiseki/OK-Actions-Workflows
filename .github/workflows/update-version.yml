@@ -18,6 +18,23 @@ on:
         type: string
         default: '{}'
 
+  workflow_dispatch:
+    inputs:
+      head_branch:
+        description: 'Branch or Tag name to extract version and push to (e.g., v1.0.0, master)'
+        required: true
+        type: string
+      target_folder:
+        description: 'The specific folder to save version.json'
+        required: false
+        type: string
+        default: 'version'
+      extra_downloads:
+        description: 'JSON string of additional download links'
+        required: false
+        type: string
+        default: '{}'
+
 permissions:
   contents: write
 
@@ -34,7 +51,7 @@ jobs:
       - name: Extract version from Tag
         id: get_version
         run: |
-          RAW_TAG="${{ inputs.inputs.head_branch || inputs.head_branch }}"
+          RAW_TAG="${{ inputs.head_branch }}"
           CLEAN_VERSION=$(echo "$RAW_TAG" | sed 's/^[^0-9]*//')
           echo "VERSION=$CLEAN_VERSION" >> $GITHUB_OUTPUT
           echo "TAG_NAME=$RAW_TAG" >> $GITHUB_OUTPUT
