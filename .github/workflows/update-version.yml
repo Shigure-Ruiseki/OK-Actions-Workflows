@@ -17,6 +17,10 @@ on:
         required: false
         type: string
         default: '{}'
+    secrets:
+      PAT_TOKEN:
+        required: false
+        description: 'Personal Access Token used to bypass branch protection rules'
 
   workflow_dispatch:
     inputs:
@@ -45,6 +49,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.head_branch }}
           fetch-depth: 0
 
@@ -53,6 +58,9 @@ jobs:
         run: |
           RAW_TAG="${{ inputs.head_branch }}"
           CLEAN_VERSION=$(echo "$RAW_TAG" | sed 's/^[^0-9]*//')
+          if [ -z "$CLEAN_VERSION" ]; then
+            CLEAN_VERSION="unknown"
+          fi
           echo "VERSION=$CLEAN_VERSION" >> $GITHUB_OUTPUT
           echo "TAG_NAME=$RAW_TAG" >> $GITHUB_OUTPUT
           echo "Extracted Version: $CLEAN_VERSION from Tag: $RAW_TAG"
